@@ -189,3 +189,46 @@ void Chip8::OP_8xy4() // Set Vx = Vx + Vy, set VF = carry
 
 	registers[Vx] = sum & 0xFF;
 }
+
+void Chip8::OP_8xy5() // Set Vx = Vx - Vy, set VF = NOT borrow
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+	// If Vx > Vy, VF is set to 1, otherwise 0.
+	if (registers[Vx] > registers[Vy])
+	{
+		registers[0xF] = 1;
+	}
+	else
+	{
+		registers[0xF] = 0;
+	}
+
+	registers[Vx] -= registers[Vy];
+}
+
+void Chip8::OP_8xy6() // Set Vx = Vx SHR 1
+{
+	// If LSB of Vx is 1, VF is 1, otherwise 0. Then Vx is divided by 2.
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	// Save LSB in VF
+	registers[0xF] = registers[Vx] & 0x1u;
+	registers[Vx] >>= 1; // Shift right by 1
+}
+
+void Chip8::OP_8xy7() // Set Vx = Vy - Vx, set VF = NOT borrow
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+	if (registers[Vy] > registers[Vx])
+	{
+		registers[0xF] = 1;
+	}
+	else
+	{
+		registers[0xF] = 0;
+	}
+
+	registers[Vx] = registers[Vy] - registers[Vx];
+}
