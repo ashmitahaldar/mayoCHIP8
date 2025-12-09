@@ -232,3 +232,195 @@ void Chip8::OP_8xy7() // Set Vx = Vy - Vx, set VF = NOT borrow
 
 	registers[Vx] = registers[Vy] - registers[Vx];
 }
+
+void Chip8::OP_8xyE() // Set Vx = Vx SHL 1
+{
+	// If MSB of Vx is 1, then VF = 1, otherwise 0. Then Vx * 2
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	registers[0xF] = (registers[Vx] & 0x80u) >> 7u;
+	registers[Vx] <<= 1; // Shift left by 1
+}
+
+void Chip8::OP_9xy0() // Skip next instruction is Vx != Vy
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+
+	if (registers[Vx] != registers[Vy])
+	{
+		pc += 2;
+	}
+}
+
+void Chip8::OP_Annn() // Set I = nnn
+{
+	uint16_t address = opcode & 0x0FFFu;
+	index = address;
+}
+
+void Chip8::OP_Bnnn() // Jump to location nnn + V0
+{
+	uint16_t address = opcode & 0x0FFFu;
+	pc = registers[0] + address;
+}
+
+void Chip8::OP_Cxkk() // Set Vx = random byte AND kk
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t byte = opcode & 0x00FFu;
+	registers[Vx] = randByte(randGen) & byte;
+}
+
+void Chip8::OP_Dxyn() // Display n-byte sprite starting at memory location I,
+{					  // at (Vx, Vy), set VF = collision
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+	uint8_t height = opcode & 0x000Fu;
+
+	// Wrap if going beyond screen boundaries
+	uint8_t xPos = registers[Vx] % VIDEO_WIDTH;
+	uint8_t yPos = registers[Vy] % VIDEO_HEIGHT;
+	// Reset register VF to 0, used as a collision flag
+	registers[0xF] = 0;
+
+	// Iterate through all rows for specified height n
+	for (unsigned int row = 0; row < height; ++row)
+	{
+		uint8_t spriteByte = memory[index + row];
+		// Iterate through columns
+		for (unsigned int col = 0; col < 8; ++col)
+		{
+			// 0x80 is binary 10000000. Shifting it right by col places the 1 at
+			// the desired bit position. The bitwise AND operation (&) isolates
+			// that single sprite pixel.
+			uint8_t spritePixel = spriteByte & (0x80u >> col);
+			// Calculates the exact memory address in the video buffer (your SDL
+			// pixel buffer) that corresponds to the screen pixel being drawn to.
+			uint32_t *screenPixelPointer = &video[(yPos + row) * VIDEO_WIDTH + (xPos + col)];
+
+			// Check if sprite pixel is on
+			if (spritePixel)
+			{
+				// Check if screen pixel is also on - collision
+				if (*screenPixelPointer == 0xFFFFFFFF)
+				{
+					registers[0xF] = 1; // Set collision flag to 1
+				}
+				// XOR with sprite pixel
+				*screenPixelPointer ^= 0xFFFFFFFF;
+			}
+		}
+	}
+}
+
+void Chip8::OP_Ex9E() // Skip next instruction if key with value of Vx is pressed
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t key = registers[Vx];
+	if (keypad[key])
+	{
+		pc += 2;
+	}
+}
+
+void Chip8::OP_ExA1() // Skip next instruction if key with the value of Vx is not pressed
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t key = registers[Vx];
+	if (!keypad[key])
+	{
+		pc += 2;
+	}
+}
+
+void Chip8::OP_Fx07() // Set Vx = delay timer value
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	registers[Vx] = delayTimer;
+}
+
+void Chip8::OP_Fx0A() // Wait for a key press, store value of key in Vx
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	bool keyPressDetected = false;
+	for (int i = 0; i < 16; i++)
+	{
+		if (keypad[i])
+		{
+			registers[Vx] = i;
+			keyPressDetected = true;
+			break; // Exit the loop immediately once a key is found
+		}
+	}
+	if (!keyPressDetected)
+	{
+		// No key pressed this cycle, so execute the wait by decrementing the PC.
+		// This ensures the same instruction is fetched and executed again next cycle.
+		pc -= 2;
+	}
+}
+
+void Chip8::OP_Fx15() // Set delay timer = Vx
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	delayTimer = registers[Vx];
+}
+
+void Chip8::OP_Fx15() // Set sound timer = Vx
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	soundTimer = registers[Vx];
+}
+
+void Chip8::OP_Fx1E() // Set I = I + Vx
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	index += registers[Vx];
+}
+
+void Chip8::OP_Fx29() // Set I = location of sprite for digit Vx
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t digit = registers[Vx];
+	// Can get address of the first byte of any font character by taking an offset
+	// from the start address
+	index = FONTSET_START_ADDRESS + (5 * digit);
+}
+
+void Chip8::OP_Fx33() // Store BCD representation of Vx in memory locations
+{					  // I, I + 1, I + 2
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	uint8_t number = registers[Vx];
+	// The interpreter takes the decimal value of Vx, and places the hundreds
+	// digit in memory at location in I, the tens digit at location I+1, and
+	// the ones digit at location I+2.
+
+	// Ones place
+	memory[index + 2] = number % 10;
+	number /= 10;
+	// Tens place
+	memory[index + 1] = number % 10;
+	number /= 10;
+	// Hundreds place
+	memory[index] = number % 10;
+	// By extracting the digit at the specific position and storing in the
+	// memory location, we directly end up storing the digits in BCD as a result
+}
+
+void Chip8::OP_Fx55() // Store registers V0 through Vx in memory, starting at location I
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	for (uint8_t i = 0; i <= Vx; ++i)
+	{
+		memory[index + i] = registers[i];
+	}
+}
+
+void Chip8::OP_Fx65() // Read registers V0 through Vx in memory, starting at location I
+{
+	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+	for (uint8_t i = 0; i <= Vx; ++i)
+	{
+		registers[i] = memory[index + i];
+	}
+}
