@@ -79,6 +79,30 @@ void Chip8::LoadFontset() // Load fonts into memory
 	}
 }
 
+void Chip8::Cycle()
+{
+	// Fetch
+	opcode = (memory[pc] << 8u) | memory[pc + 1];
+
+	// Increment PC
+	pc += 2;
+
+	// Decode and execute
+	((*this).*(table[(opcode & 0xF000u) >> 12u]))();
+
+	// Decrement delay timer if set
+	if (delayTimer > 0)
+	{
+		--delayTimer;
+	}
+
+	// Decrement sound timer if set
+	if (soundTimer > 0)
+	{
+		--soundTimer;
+	}
+}
+
 void Chip8::SetupFunctionPointerTable()
 {
 	table[0x0] = &Chip8::Table0;
@@ -161,7 +185,7 @@ void Chip8::TableE()
 // The first digit F repeats but the last two digits are unique
 void Chip8::TableF()
 {
-	((*this).*(tableF[opcode & 0x000Fu]))();
+	((*this).*(tableF[opcode & 0x00FFu]))();
 }
 
 // Opcodes

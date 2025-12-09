@@ -17,6 +17,7 @@ public:
 	void LoadRom(char const *filename);
 	void LoadFontset();
 	void SetupFunctionPointerTable();
+	void Cycle();
 
 private:
 	uint8_t registers[REGISTER_COUNT]{};
