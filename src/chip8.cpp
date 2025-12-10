@@ -486,7 +486,7 @@ void Chip8::OP_Fx15() // Set delay timer = Vx
 	delayTimer = registers[Vx];
 }
 
-void Chip8::OP_Fx15() // Set sound timer = Vx
+void Chip8::OP_Fx18() // Set sound timer = Vx
 {
 	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 	soundTimer = registers[Vx];
