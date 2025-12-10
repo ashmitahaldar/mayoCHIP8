@@ -18,6 +18,10 @@ public:
 	void LoadFontset();
 	void SetupFunctionPointerTable();
 	void Cycle();
+	
+	// Getters for main.cpp
+	uint8_t *GetKeypad() { return keypad; }
+	uint32_t *GetVideo() { return video; }
 
 private:
 	uint8_t registers[REGISTER_COUNT]{};

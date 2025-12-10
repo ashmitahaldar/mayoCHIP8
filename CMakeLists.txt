@@ -12,6 +12,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(SDL2 REQUIRED CONFIG)
 
 add_executable(mayochip8
+    src/main.cpp
     src/chip8.cpp
     src/platform.cpp
 )
