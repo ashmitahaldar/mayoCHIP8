@@ -244,7 +244,7 @@ void Chip8::OP_5xy0() // Skip next instruction if Vx = Vy
 	uint8_t Vx = (opcode & 0x0F00u) >> 8u;
 	uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
-	if (registers[Vx] != registers[Vy])
+	if (registers[Vx] == registers[Vy])
 	{
 		pc += 2;
 	}
